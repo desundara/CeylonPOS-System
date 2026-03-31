@@ -1,31 +1,59 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, UserPlus, Phone, Mail, Star, TrendingUp, X, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { customerService } from '../api/customerService';
 
 export default function Customers() {
-  const { customers, showNotification } = useApp();
+  const { customers, showNotification, refreshData } = useApp();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
   const [selected, setSelected] = useState(null);
+  const [purchaseHistory, setPurchaseHistory] = useState([]);
 
   const filtered = customers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone.includes(search) || c.email.toLowerCase().includes(search.toLowerCase())
+    c.phone.includes(search) || (c.email || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleAdd = () => {
-    if (!form.name || !form.phone) { showNotification('Name and phone required', 'error'); return; }
-    showNotification('Customer added successfully!');
-    setShowModal(false);
-    setForm({ name: '', phone: '', email: '' });
-  };
+  useEffect(() => {
+    const loadPurchaseHistory = async () => {
+      if (!selected) {
+        setPurchaseHistory([]);
+        return;
+      }
 
-  const purchaseHistory = [
-    { id: 'INV-2025-0821', date: '2025-03-18', items: 7, total: 3420, payment: 'Cash' },
-    { id: 'INV-2025-0756', date: '2025-03-10', items: 3, total: 1560, payment: 'Card' },
-    { id: 'INV-2025-0689', date: '2025-03-01', items: 12, total: 7890, payment: 'Cash' },
-  ];
+      try {
+        const history = await customerService.getPurchaseHistory(selected.id);
+        setPurchaseHistory(history);
+      } catch (error) {
+        showNotification('Failed to load purchase history: ' + error.message, 'error');
+      }
+    };
+
+    loadPurchaseHistory();
+  }, [selected, showNotification]);
+
+  const handleAdd = async () => {
+    if (!form.name || !form.phone) {
+      showNotification('Name and phone required', 'error');
+      return;
+    }
+
+    try {
+      await customerService.create({
+        name: form.name,
+        phone: form.phone,
+        email: form.email,
+      });
+      showNotification('Customer added successfully!');
+      await refreshData();
+      setShowModal(false);
+      setForm({ name: '', phone: '', email: '' });
+    } catch (error) {
+      showNotification('Failed to add customer: ' + error.message, 'error');
+    }
+  };
 
   return (
     <div className="p-4 md:p-6 animate-fade-in">
@@ -63,7 +91,7 @@ export default function Customers() {
                       <Phone size={10} /> {c.phone}
                     </span>
                     <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      <Mail size={10} /> {c.email}
+                      <Mail size={10} /> {c.email || 'No email'}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 mt-2">
@@ -84,17 +112,22 @@ export default function Customers() {
                     Purchase History
                   </p>
                   <div className="space-y-2">
+                    {purchaseHistory.length === 0 && (
+                      <div className="p-3 text-xs rounded-lg" style={{ background: 'var(--input-bg)', color: 'var(--text-muted)' }}>
+                        No purchase history yet.
+                      </div>
+                    )}
                     {purchaseHistory.map((h, i) => (
                       <div key={i} className="flex items-center justify-between p-2.5 rounded-lg"
                         style={{ background: 'var(--input-bg)' }}>
                         <div>
-                          <p className="font-mono text-xs text-blue-400">{h.id}</p>
+                          <p className="font-mono text-xs text-blue-400">{h.invoice_number}</p>
                           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                            {h.date} · {h.items} items · {h.payment}
+                            {new Date(h.date_time).toLocaleDateString('en-LK')} · {h.items?.length || 0} items · {h.payment_method}
                           </p>
                         </div>
                         <span className="font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                          Rs. {h.total.toLocaleString()}
+                          Rs. {parseFloat(h.total_amount).toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -114,8 +147,8 @@ export default function Customers() {
               {[
                 { label: 'Total Customers', value: customers.length },
                 { label: 'Total Revenue', value: `Rs. ${(customers.reduce((s, c) => s + c.totalSpent, 0) / 1000).toFixed(0)}k` },
-                { label: 'Avg Loyalty Points', value: Math.round(customers.reduce((s, c) => s + c.loyaltyPoints, 0) / customers.length) },
-                { label: 'Top Spender', value: [...customers].sort((a, b) => b.totalSpent - a.totalSpent)[0]?.name },
+                { label: 'Avg Loyalty Points', value: customers.length ? Math.round(customers.reduce((s, c) => s + c.loyaltyPoints, 0) / customers.length) : 0 },
+                { label: 'Top Spender', value: [...customers].sort((a, b) => b.totalSpent - a.totalSpent)[0]?.name || 'N/A' },
               ].map((s, i) => (
                 <div key={i} className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
                   <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{s.label}</span>

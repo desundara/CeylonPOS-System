@@ -1,23 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, User, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
-
-const CASHIERS = [
-  { id: 1, name: 'Kasun Perera', role: 'Senior Cashier', pin: '1234', avatar: 'K' },
-  { id: 2, name: 'Nimali Silva', role: 'Cashier', pin: '2345', avatar: 'N' },
-  { id: 3, name: 'Ruwan Fernando', role: 'Cashier', pin: '3456', avatar: 'R' },
-  { id: 4, name: 'Admin User', role: 'Store Manager', pin: '0000', avatar: 'A' },
-];
+import { cashierService } from '../api/cashierService';
 
 export default function CashierLogin() {
   const { loginCashier, setActivePage } = useApp();
   const { isDark } = useTheme();
+  const [cashiers, setCashiers] = useState([]);
   const [selected, setSelected] = useState(null);
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchCashiers = async () => {
+      try {
+        const data = await cashierService.getAll();
+        setCashiers(data);
+      } catch (err) {
+        console.error("Failed to load cashiers", err);
+        setError("Failed to load cashier profiles from server.");
+      }
+    };
+    fetchCashiers();
+  }, []);
+
+  // Keyboard accessibility for PIN entry
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!selected) return; // Only accept input if profile selected
+      
+      if (/^[0-9]$/.test(e.key)) {
+        setPin(p => p.length < 4 ? p + e.key : p);
+      } else if (e.key === 'Backspace') {
+        setPin(p => p.slice(0, -1));
+      } else if (e.key === 'Escape' || e.key.toLowerCase() === 'c') {
+        setPin(''); // 'c' or escape to clear
+      } else if (e.key === 'Enter') {
+        document.getElementById('pos-login-button')?.click();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selected]);
 
   const handlePinPad = (digit) => {
     if (pin.length < 4) setPin(p => p + digit);
@@ -26,20 +54,24 @@ export default function CashierLogin() {
   const handleBackspace = () => setPin(p => p.slice(0, -1));
   const handleClear = () => setPin('');
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!selected) { setError('Please select a cashier profile'); return; }
     if (pin.length < 4) { setError('Enter your 4-digit PIN'); return; }
     setLoading(true);
     setError('');
-    setTimeout(() => {
-      if (pin === selected.pin) {
-        loginCashier(selected);
-      } else {
-        setError('Incorrect PIN. Please try again.');
-        setPin('');
-      }
+    
+    try {
+      const response = await cashierService.login(selected.id, pin);
+      await new Promise(r => setTimeout(r, 600));
+      loginCashier(response.user);
+      setActivePage('pos'); // Redirect to POS after login
+    } catch (err) {
+      await new Promise(r => setTimeout(r, 600));
+      setError('Incorrect PIN or Server Error. Please try again.');
+      setPin('');
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (
@@ -90,7 +122,7 @@ export default function CashierLogin() {
               <User size={14} /> Select Cashier
             </h3>
             <div className="space-y-2">
-              {CASHIERS.map(c => (
+              {cashiers.map(c => (
                 <button key={c.id} onClick={() => { setSelected(c); setPin(''); setError(''); }}
                   className="flex items-center w-full gap-4 p-4 text-left transition-all rounded-xl"
                   style={selected?.id === c.id
@@ -164,7 +196,7 @@ export default function CashierLogin() {
                 ))}
               </div>
 
-              <button onClick={handleLogin} disabled={loading || !selected || pin.length < 4}
+              <button id="pos-login-button" onClick={handleLogin} disabled={loading || !selected || pin.length < 4}
                 className="w-full py-3 text-sm font-semibold text-white transition-all rounded-xl"
                 style={{
                   background: (!selected || pin.length < 4) ? 'rgba(21,101,192,0.3)' : 'linear-gradient(135deg,#1565C0,#1E88E5)',

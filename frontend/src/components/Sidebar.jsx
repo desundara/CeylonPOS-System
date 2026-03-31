@@ -20,10 +20,17 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-  const { activePage, setActivePage, sidebarOpen, setSidebarOpen, lowStockProducts, cartCount, cashierSession, logoutCashier } = useApp();
+  const { activePage, setActivePage, sidebarOpen, setSidebarOpen, lowStockProducts, cartCount, cashierSession, logoutCashier, showNotification } = useApp();
   const { isDark, toggleTheme } = useTheme();
 
   const handleNav = (id) => {
+    if (id === 'pos' && !cashierSession) {
+      showNotification('Please log in as a cashier before opening POS', 'error');
+      setActivePage('cashier');
+      setSidebarOpen(false);
+      return;
+    }
+
     setActivePage(id);
     setSidebarOpen(false);
   };
@@ -151,11 +158,15 @@ export default function Sidebar() {
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 text-sm font-bold rounded-full"
               style={{ background: 'linear-gradient(135deg,#1565C0,#42A5F5)', color: '#ffffff' }}>
-              A
+              {cashierSession?.avatar || 'A'}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>Admin User</div>
-              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Store Manager</div>
+              <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                {cashierSession?.name || 'Admin User'}
+              </div>
+              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {cashierSession?.role || 'Store Manager'}
+              </div>
             </div>
             {cashierSession && (
               <button onClick={logoutCashier}

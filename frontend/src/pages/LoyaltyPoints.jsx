@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Star, Gift, TrendingUp, Award, Search, Plus, Minus, RefreshCw, Crown } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { customerService } from '../api/customerService';
 
 export default function LoyaltyPoints() {
-  const { customers, setCustomers, showNotification, POINTS_VALUE } = useApp();
+  const { customers, refreshData, showNotification, POINTS_VALUE, MIN_REDEEM_POINTS } = useApp();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [redeemAmt, setRedeemAmt] = useState('');
@@ -25,28 +26,38 @@ export default function LoyaltyPoints() {
 
   const getTier = (pts) => tiers.find(t => pts >= t.min && pts <= t.max) || tiers[0];
 
-  const handleRedeem = () => {
+  const handleRedeem = async () => {
     if (!selected || !redeemAmt) return;
     const pts = parseInt(redeemAmt);
+    if (Number.isNaN(pts) || pts <= 0) { showNotification('Enter a valid number of points', 'error'); return; }
+    if (pts < MIN_REDEEM_POINTS) { showNotification(`Minimum redeem is ${MIN_REDEEM_POINTS} points`, 'error'); return; }
     if (pts > selected.loyaltyPoints) { showNotification('Not enough points!', 'error'); return; }
-    const discount = (pts * POINTS_VALUE).toFixed(2);
-    setCustomers(prev => prev.map(c =>
-      c.id === selected.id ? { ...c, loyaltyPoints: c.loyaltyPoints - pts } : c
-    ));
-    setSelected(prev => ({ ...prev, loyaltyPoints: prev.loyaltyPoints - pts }));
-    showNotification(`Redeemed ${pts} pts = Rs. ${discount} discount!`);
-    setRedeemAmt('');
+
+    try {
+      const result = await customerService.redeemPoints(selected.id, pts, 'Manual loyalty redemption');
+      await refreshData();
+      setSelected(prev => prev ? { ...prev, loyaltyPoints: result.customer.loyalty_points } : prev);
+      showNotification(`Redeemed ${pts} pts = Rs. ${parseFloat(result.discount_value).toFixed(2)} discount!`);
+      setRedeemAmt('');
+    } catch (error) {
+      showNotification('Failed to redeem points: ' + error.message, 'error');
+    }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!selected || !addAmt) return;
     const pts = parseInt(addAmt);
-    setCustomers(prev => prev.map(c =>
-      c.id === selected.id ? { ...c, loyaltyPoints: c.loyaltyPoints + pts } : c
-    ));
-    setSelected(prev => ({ ...prev, loyaltyPoints: prev.loyaltyPoints + pts }));
-    showNotification(`Added ${pts} points to ${selected.name}`);
-    setAddAmt('');
+    if (Number.isNaN(pts) || pts <= 0) { showNotification('Enter a valid number of points', 'error'); return; }
+
+    try {
+      const result = await customerService.addPoints(selected.id, pts, 'Manual loyalty bonus');
+      await refreshData();
+      setSelected(prev => prev ? { ...prev, loyaltyPoints: result.customer.loyalty_points } : prev);
+      showNotification(`Added ${pts} points to ${selected.name}`);
+      setAddAmt('');
+    } catch (error) {
+      showNotification('Failed to add points: ' + error.message, 'error');
+    }
   };
 
   return (
@@ -57,7 +68,7 @@ export default function LoyaltyPoints() {
           { label: 'Total Members', value: customers.length, icon: Star, color: '#42A5F5' },
           { label: 'Total Points Issued', value: totalPoints.toLocaleString(), icon: Gift, color: '#FFD700' },
           { label: 'Points Value', value: `Rs. ${totalValue}`, icon: TrendingUp, color: '#34D399' },
-          { label: 'Avg Points/Member', value: Math.round(totalPoints / customers.length), icon: Award, color: '#A78BFA' },
+          { label: 'Avg Points/Member', value: customers.length ? Math.round(totalPoints / customers.length) : 0, icon: Award, color: '#A78BFA' },
         ].map((s, i) => (
           <div key={i} className="stat-card">
             <div className="flex items-center gap-3 mb-2">

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Smartphone, X, Tag, Star, QrCode, User } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { categories } from '../data/mockData';
 import QRScanner from '../components/QRScanner';
 import ReceiptModal from '../components/ReceiptModal';
 
@@ -9,7 +8,8 @@ export default function POS() {
   const {
     products, customers, cart, addToCart, removeFromCart,
     updateCartQty, clearCart, completeSale,
-    showNotification, POINTS_VALUE, cashierSession,
+    showNotification, POINTS_VALUE, cashierSession, setActivePage,
+    categories, appSettings, MIN_REDEEM_POINTS,
   } = useApp();
 
   const [search, setSearch]                     = useState('');
@@ -25,10 +25,12 @@ export default function POS() {
   const [custSearch, setCustSearch]             = useState('');
   const [showCustDrop, setShowCustDrop]         = useState(false);
 
+  const taxRate = (parseFloat(appSettings?.tax_rate) || 0) / 100;
   const subtotal       = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax            = Math.round(subtotal * 0.08);
+  const tax            = Math.round(subtotal * taxRate);
   const discountAmt    = Math.round(subtotal * discount / 100);
-  const pointsDiscount = Math.floor(redeemPoints * POINTS_VALUE);
+  const appliedRedeemPoints = redeemPoints >= MIN_REDEEM_POINTS ? redeemPoints : 0;
+  const pointsDiscount = Math.floor(appliedRedeemPoints * POINTS_VALUE);
   const grandTotal     = Math.max(0, subtotal + tax - discountAmt - pointsDiscount);
   const pointsEarned   = Math.floor(grandTotal * 0.01);
 
@@ -52,21 +54,35 @@ export default function POS() {
     setShowReceipt(true);
   };
 
-  const handleCompleteSale = () => {
-    const tx = completeSale({
-      customerName: selectedCustomer ? selectedCustomer.name : 'Walk-in Customer',
-      customerId:   selectedCustomer ? selectedCustomer.id   : null,
-      items:        cart.length,
-      total:        grandTotal,
-      payment,
-      redeemPoints,
-    });
-    setCompletedSale(tx);
-    setShowReceipt(false);
-    setSelectedCustomer(null);
-    setDiscount(0);
-    setRedeemPoints(0);
-    showNotification('Sale completed! Rs. ' + grandTotal.toLocaleString());
+  const handleCompleteSale = async () => {
+    if (redeemPoints > 0 && !selectedCustomer) {
+      showNotification('Select a customer to redeem loyalty points', 'error');
+      return;
+    }
+    if (redeemPoints > 0 && redeemPoints < MIN_REDEEM_POINTS) {
+      showNotification(`Minimum redeem is ${MIN_REDEEM_POINTS} points`, 'error');
+      return;
+    }
+
+    try {
+      const tx = await completeSale({
+        customerName: selectedCustomer ? selectedCustomer.name : 'Walk-in Customer',
+        customerId:   selectedCustomer ? selectedCustomer.id   : null,
+        items:        cart.length,
+        total:        grandTotal,
+        payment,
+        discountAmount: discountAmt,
+        redeemPoints: appliedRedeemPoints,
+      });
+      setCompletedSale(tx);
+      setShowReceipt(false);
+      setSelectedCustomer(null);
+      setDiscount(0);
+      setRedeemPoints(0);
+      showNotification('Sale completed! Rs. ' + grandTotal.toLocaleString());
+    } catch (error) {
+      // Error is handled in completeSale notification
+    }
   };
 
   const receiptData = {
@@ -75,24 +91,53 @@ export default function POS() {
     payment,
     discount,
     discountAmt,
-    redeemPoints,
+    redeemPoints: appliedRedeemPoints,
     pointsDiscount,
+    taxRatePercent: parseFloat(appSettings?.tax_rate) || 0,
     tax,
     grandTotal,
     pointsEarned:  selectedCustomer ? pointsEarned : 0,
     cashierName:   cashierSession ? cashierSession.name : 'Admin',
+    storeName: appSettings?.store_name,
+    receiptHeader: appSettings?.receipt_header,
+    receiptFooter: appSettings?.receipt_footer,
+    currency: appSettings?.currency,
   };
 
   const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(custSearch.toLowerCase()) || c.phone.includes(custSearch)
+    c.name.toLowerCase().includes(custSearch.toLowerCase()) ||
+    c.phone.includes(custSearch) ||
+    (c.email || '').toLowerCase().includes(custSearch.toLowerCase())
   );
 
   const filtered = products.filter(p => {
+    const query = search.trim().toLowerCase();
     const matchCat    = selectedCat === 'All' || p.category === selectedCat;
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-                        p.sku.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !query ||
+                        p.name.toLowerCase().includes(query) ||
+                        (p.sku || '').toLowerCase().includes(query) ||
+                        (p.barcode || '').toLowerCase().includes(query);
     return matchCat && matchSearch;
   });
+
+  if (!cashierSession) {
+    return (
+      <div className="flex items-center justify-center h-full p-6 animate-fade-in">
+        <div className="max-w-md p-6 text-center glass rounded-2xl">
+          <h2 className="mb-2 text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Cashier Login Required</h2>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Start a cashier session before billing so every sale is stored with the cashier name and login record.
+          </p>
+          <button
+            onClick={() => setActivePage('cashier')}
+            className="mt-5 btn-primary"
+          >
+            Go To Cashier Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Cart Content — extracted as JSX, NOT a component ─────────────────────
   const cartContent = (
@@ -274,7 +319,7 @@ export default function POS() {
         </div>
 
         {/* Loyalty redeem */}
-        {selectedCustomer && selectedCustomer.loyaltyPoints > 0 && (
+          {selectedCustomer && selectedCustomer.loyaltyPoints > 0 && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: '8px', padding: '8px',
             marginBottom: '8px', borderRadius: '8px',
@@ -299,6 +344,11 @@ export default function POS() {
             )}
           </div>
         )}
+        {selectedCustomer && redeemPoints > 0 && redeemPoints < MIN_REDEEM_POINTS && (
+          <div style={{ marginBottom: '8px', fontSize: '12px', color: '#fbbf24' }}>
+            Minimum redeem is {MIN_REDEEM_POINTS} points.
+          </div>
+        )}
 
         {/* Totals */}
         <div style={{ marginBottom: '8px', fontSize: '14px' }}>
@@ -312,11 +362,11 @@ export default function POS() {
           )}
           {pointsDiscount > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fbbf24', marginBottom: '4px' }}>
-              <span>Points ({redeemPoints}pt)</span><span style={{ fontFamily: 'monospace' }}>-Rs. {pointsDiscount}</span>
+              <span>Points ({appliedRedeemPoints}pt)</span><span style={{ fontFamily: 'monospace' }}>-Rs. {pointsDiscount}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', marginBottom: '4px' }}>
-            <span>Tax (8%)</span><span style={{ fontFamily: 'monospace' }}>Rs. {tax.toLocaleString()}</span>
+            <span>Tax ({parseFloat(appSettings?.tax_rate) || 0}%)</span><span style={{ fontFamily: 'monospace' }}>Rs. {tax.toLocaleString()}</span>
           </div>
           <div style={{
             display: 'flex', justifyContent: 'space-between', fontWeight: 'bold',
@@ -393,16 +443,26 @@ export default function POS() {
 
           {/* Category filter */}
           <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+            <button onClick={() => setSelectedCat('All')}
+              style={{
+                flexShrink: 0, fontSize: '12px', padding: '6px 12px',
+                borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                background: selectedCat === 'All' ? '#1565C0' : 'var(--input-bg)',
+                color: selectedCat === 'All' ? '#fff' : 'var(--text-muted)',
+                border: selectedCat === 'All' ? '1px solid #1565C0' : '1px solid var(--border-color)',
+              }}>
+              All
+            </button>
             {categories.map(cat => (
-              <button key={cat} onClick={() => setSelectedCat(cat)}
+              <button key={cat.id} onClick={() => setSelectedCat(cat.name)}
                 style={{
                   flexShrink: 0, fontSize: '12px', padding: '6px 12px',
                   borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
-                  background: selectedCat === cat ? '#1565C0' : 'var(--input-bg)',
-                  color: selectedCat === cat ? '#fff' : 'var(--text-muted)',
-                  border: selectedCat === cat ? '1px solid #1565C0' : '1px solid var(--border-color)',
+                  background: selectedCat === cat.name ? '#1565C0' : 'var(--input-bg)',
+                  color: selectedCat === cat.name ? '#fff' : 'var(--text-muted)',
+                  border: selectedCat === cat.name ? '1px solid #1565C0' : '1px solid var(--border-color)',
                 }}>
-                {cat}
+                {cat.name}
               </button>
             ))}
           </div>
@@ -422,7 +482,8 @@ export default function POS() {
               <div style={{
                 width: '100%', aspectRatio: '1', borderRadius: '8px', marginBottom: '10px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px',
-                background: 'var(--input-bg)',
+                background: product.image ? `center / cover no-repeat url(${product.image})` : 'var(--input-bg)',
+                color: product.image ? 'transparent' : 'inherit',
               }}>📦</div>
               <p style={{ margin: '0 0 6px', fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                 {product.name}
