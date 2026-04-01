@@ -52,7 +52,7 @@ export default function LoyaltyPoints() {
   return (
     <div className="p-4 md:p-6 animate-fade-in">
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 gap-3 mb-6 lg:grid-cols-4">
         {[
           { label: 'Total Members', value: customers.length, icon: Star, color: '#42A5F5' },
           { label: 'Total Points Issued', value: totalPoints.toLocaleString(), icon: Gift, color: '#FFD700' },
@@ -61,7 +61,7 @@ export default function LoyaltyPoints() {
         ].map((s, i) => (
           <div key={i} className="stat-card">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${s.color}18`, border: `1px solid ${s.color}28` }}>
+              <div className="flex items-center justify-center w-9 h-9 rounded-xl" style={{ background: `${s.color}18`, border: `1px solid ${s.color}28` }}>
                 <s.icon size={16} style={{ color: s.color }} />
               </div>
             </div>
@@ -72,19 +72,19 @@ export default function LoyaltyPoints() {
       </div>
 
       {/* Tier Info */}
-      <div className="glass rounded-xl p-5 mb-6">
-        <h3 className="font-semibold mb-4 text-sm" style={{ color: 'var(--text-primary)' }}>Loyalty Tiers</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="p-5 mb-6 glass rounded-xl">
+        <h3 className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Loyalty Tiers</h3>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {tiers.map(t => {
             const count = customers.filter(c => c.loyaltyPoints >= t.min && c.loyaltyPoints <= t.max).length;
             return (
-              <div key={t.name} className="p-3 rounded-xl text-center" style={{ background: 'var(--input-bg)', border: `1px solid ${t.color}30` }}>
-                <div className="text-2xl mb-1">{t.icon}</div>
-                <div className="font-semibold text-sm" style={{ color: t.color }}>{t.name}</div>
+              <div key={t.name} className="p-3 text-center rounded-xl" style={{ background: 'var(--input-bg)', border: `1px solid ${t.color}30` }}>
+                <div className="mb-1 text-2xl">{t.icon}</div>
+                <div className="text-sm font-semibold" style={{ color: t.color }}>{t.name}</div>
                 <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   {t.max === Infinity ? `${t.min}+ pts` : `${t.min}–${t.max} pts`}
                 </div>
-                <div className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{count}</div>
+                <div className="mt-1 text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{count}</div>
                 <div className="text-xs" style={{ color: 'var(--text-muted)' }}>members</div>
               </div>
             );
@@ -92,11 +92,11 @@ export default function LoyaltyPoints() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {/* Customer List */}
         <div className="xl:col-span-2">
           <div className="relative mb-3">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+            {/* <Search size={14} className="absolute -translate-y-1/2 left-3 top-1/2" style={{ color: 'var(--text-muted)' }} /> */}
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search by name or phone..."
               className="input-field pl-9" />
@@ -112,19 +112,19 @@ export default function LoyaltyPoints() {
 
               return (
                 <button key={c.id} onClick={() => setSelected(s => s?.id === c.id ? null : c)}
-                  className="w-full text-left p-4 rounded-xl transition-all"
+                  className="w-full p-4 text-left transition-all rounded-xl"
                   style={{
                     background: selected?.id === c.id ? 'rgba(21,101,192,0.15)' : 'var(--card-bg)',
                     border: selected?.id === c.id ? '1px solid rgba(21,101,192,0.5)' : '1px solid var(--border-color)'
                   }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
+                    <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 text-sm font-bold rounded-xl"
                       style={{ background: `${tier.color}20`, color: tier.color, border: `1px solid ${tier.color}30` }}>
                       {c.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{c.name}</span>
+                        <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{c.name}</span>
                         <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: `${tier.color}20`, color: tier.color }}>
                           {tier.icon} {tier.name}
                         </span>
@@ -139,18 +139,18 @@ export default function LoyaltyPoints() {
                       </div>
                       {nextTier && (
                         <div className="mt-1.5">
-                          <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(21,101,192,0.15)' }}>
-                            <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: `linear-gradient(90deg, ${tier.color}, ${nextTier.color})` }} />
+                          <div className="h-1 overflow-hidden rounded-full" style={{ background: 'rgba(21,101,192,0.15)' }}>
+                            <div className="h-full transition-all rounded-full" style={{ width: `${progress}%`, background: `linear-gradient(90deg, ${tier.color}, ${nextTier.color})` }} />
                           </div>
                           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                             {nextTier.min - c.loyaltyPoints} pts to {nextTier.name}
                           </p>
                         </div>
                       )}
-                      {!nextTier && <p className="text-xs mt-1" style={{ color: tier.color }}>🏆 Maximum tier reached!</p>}
+                      {!nextTier && <p className="mt-1 text-xs" style={{ color: tier.color }}>🏆 Maximum tier reached!</p>}
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
+                    <div className="flex-shrink-0 text-right">
+                      <div className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
                         Rs. {c.totalSpent.toLocaleString()}
                       </div>
                       <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>total spent</div>
@@ -166,9 +166,9 @@ export default function LoyaltyPoints() {
         <div className="space-y-4">
           {selected ? (
             <>
-              <div className="glass rounded-xl p-5">
-                <div className="flex items-center gap-3 mb-4 pb-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold"
+              <div className="p-5 glass rounded-xl">
+                <div className="flex items-center gap-3 pb-4 mb-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                  <div className="flex items-center justify-center w-12 h-12 text-xl font-bold rounded-xl"
                     style={{ background: 'linear-gradient(135deg,#1565C0,#42A5F5)', color: '#fff' }}>
                     {selected.name.charAt(0)}
                   </div>
@@ -178,13 +178,13 @@ export default function LoyaltyPoints() {
                   </div>
                 </div>
 
-                <div className="text-center py-3 mb-4 rounded-xl" style={{ background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.2)' }}>
+                <div className="py-3 mb-4 text-center rounded-xl" style={{ background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.2)' }}>
                   <div className="flex items-center justify-center gap-1.5 mb-1">
                     <Star size={16} className="text-amber-400" fill="currentColor" />
-                    <span className="text-2xl font-bold font-mono text-amber-400">{selected.loyaltyPoints.toLocaleString()}</span>
+                    <span className="font-mono text-2xl font-bold text-amber-400">{selected.loyaltyPoints.toLocaleString()}</span>
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Available Points</p>
-                  <p className="text-sm font-semibold text-emerald-400 mt-1">= Rs. {(selected.loyaltyPoints * POINTS_VALUE).toFixed(2)}</p>
+                  <p className="mt-1 text-sm font-semibold text-emerald-400">= Rs. {(selected.loyaltyPoints * POINTS_VALUE).toFixed(2)}</p>
                 </div>
 
                 {/* Redeem */}
@@ -194,13 +194,13 @@ export default function LoyaltyPoints() {
                   </label>
                   <div className="flex gap-2">
                     <input type="number" value={redeemAmt} onChange={e => setRedeemAmt(e.target.value)}
-                      placeholder="Enter points" className="input-field flex-1 text-sm" max={selected.loyaltyPoints} />
-                    <button onClick={handleRedeem} className="px-3 py-2 rounded-lg text-white text-sm font-medium"
+                      placeholder="Enter points" className="flex-1 text-sm input-field" max={selected.loyaltyPoints} />
+                    <button onClick={handleRedeem} className="px-3 py-2 text-sm font-medium text-white rounded-lg"
                       style={{ background: 'linear-gradient(135deg,#dc2626,#ef4444)' }}>
                       Redeem
                     </button>
                   </div>
-                  {redeemAmt && <p className="text-xs mt-1 text-emerald-400">= Rs. {(parseInt(redeemAmt || 0) * POINTS_VALUE).toFixed(2)} discount</p>}
+                  {redeemAmt && <p className="mt-1 text-xs text-emerald-400">= Rs. {(parseInt(redeemAmt || 0) * POINTS_VALUE).toFixed(2)} discount</p>}
                 </div>
 
                 {/* Add Points */}
@@ -210,8 +210,8 @@ export default function LoyaltyPoints() {
                   </label>
                   <div className="flex gap-2">
                     <input type="number" value={addAmt} onChange={e => setAddAmt(e.target.value)}
-                      placeholder="Enter points" className="input-field flex-1 text-sm" />
-                    <button onClick={handleAdd} className="px-3 py-2 rounded-lg text-white text-sm font-medium"
+                      placeholder="Enter points" className="flex-1 text-sm input-field" />
+                    <button onClick={handleAdd} className="px-3 py-2 text-sm font-medium text-white rounded-lg"
                       style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)' }}>
                       Add
                     </button>
@@ -220,15 +220,15 @@ export default function LoyaltyPoints() {
               </div>
 
               {/* Quick redeem buttons */}
-              <div className="glass rounded-xl p-4">
-                <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Quick Redeem</p>
+              <div className="p-4 glass rounded-xl">
+                <p className="mb-3 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Quick Redeem</p>
                 <div className="grid grid-cols-2 gap-2">
                   {[100, 250, 500, 1000].map(pts => (
                     <button key={pts} onClick={() => {
                       if (pts > selected.loyaltyPoints) { showNotification('Not enough points!', 'error'); return; }
                       setRedeemAmt(String(pts));
                     }}
-                      className="py-2 rounded-lg text-xs font-medium transition-all"
+                      className="py-2 text-xs font-medium transition-all rounded-lg"
                       style={{
                         background: 'var(--input-bg)',
                         border: '1px solid var(--border-color)',
@@ -243,19 +243,19 @@ export default function LoyaltyPoints() {
               </div>
             </>
           ) : (
-            <div className="glass rounded-xl p-8 text-center">
-              <Crown size={36} className="text-amber-400 mx-auto mb-3 opacity-60" />
+            <div className="p-8 text-center glass rounded-xl">
+              <Crown size={36} className="mx-auto mb-3 text-amber-400 opacity-60" />
               <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Select a customer</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>to manage their loyalty points</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>to manage their loyalty points</p>
             </div>
           )}
 
           {/* Earning rules */}
-          <div className="glass rounded-xl p-4">
-            <h4 className="text-xs font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Earning Rules</h4>
+          <div className="p-4 glass rounded-xl">
+            <h4 className="mb-3 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Earning Rules</h4>
             <div className="space-y-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <div className="flex justify-between"><span>Every Rs. 100 spent</span><span className="text-amber-400 font-mono">+1 pt</span></div>
-              <div className="flex justify-between"><span>1 point value</span><span className="text-emerald-400 font-mono">Rs. 0.50</span></div>
+              <div className="flex justify-between"><span>Every Rs. 100 spent</span><span className="font-mono text-amber-400">+1 pt</span></div>
+              <div className="flex justify-between"><span>1 point value</span><span className="font-mono text-emerald-400">Rs. 0.50</span></div>
               <div className="flex justify-between"><span>Min redeem</span><span className="font-mono" style={{ color: 'var(--text-primary)' }}>100 pts</span></div>
               <div className="flex justify-between"><span>Points expire</span><span className="font-mono" style={{ color: 'var(--text-primary)' }}>12 months</span></div>
             </div>
