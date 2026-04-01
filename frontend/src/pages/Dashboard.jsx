@@ -2,7 +2,6 @@ import React from 'react';
 import { TrendingUp, ShoppingBag, Package, Users, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useApp } from '../context/AppContext';
-import { salesData, monthlyData, topProducts, recentSales } from '../data/mockData';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -19,13 +18,17 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function Dashboard() {
-  const { lowStockProducts, setActivePage } = useApp();
+  const { lowStockProducts, setActivePage, transactions, products, customers, dailyMetrics, monthlyMetrics, topProducts } = useApp();
 
+  const todayStr = new Date().toLocaleDateString('en-LK');
+  const todaySales = transactions.filter(t => t.date === todayStr);
+  const todayRevenue = todaySales.reduce((s, t) => s + (parseFloat(t.total) || 0), 0);
+  
   const stats = [
-    { label: "Today's Revenue", value: 'Rs. 52,400', sub: '+12.4% from yesterday', icon: TrendingUp, trend: 'up', color: '#42A5F5' },
-    { label: 'Orders Today', value: '38', sub: '+5 from yesterday', icon: ShoppingBag, trend: 'up', color: '#34D399' },
+    { label: "Today's Revenue", value: `Rs. ${todayRevenue.toLocaleString()}`, sub: 'Live from backend', icon: TrendingUp, trend: 'up', color: '#42A5F5' },
+    { label: 'Orders Today', value: todaySales.length.toString(), sub: 'Live from backend', icon: ShoppingBag, trend: 'up', color: '#34D399' },
     { label: 'Low Stock Items', value: lowStockProducts.length, sub: 'Need restocking', icon: AlertTriangle, trend: 'down', color: '#FBBF24' },
-    { label: 'Total Customers', value: '1,284', sub: '+8 this week', icon: Users, trend: 'up', color: '#A78BFA' },
+    { label: 'Total Customers', value: customers.length.toLocaleString(), sub: 'Registered customers', icon: Users, trend: 'up', color: '#A78BFA' },
   ];
 
   return (
@@ -66,7 +69,7 @@ export default function Dashboard() {
             <span className="badge badge-blue">This Week</span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={salesData}>
+            <AreaChart data={dailyMetrics}>
               <defs>
                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#1565C0" stopOpacity={0.4} />
@@ -92,7 +95,7 @@ export default function Dashboard() {
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Past 7 months</p>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={monthlyData} barSize={18}>
+            <BarChart data={monthlyMetrics} barSize={18}>
               <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip content={<CustomTooltip />} />
@@ -110,7 +113,7 @@ export default function Dashboard() {
             <button onClick={() => setActivePage('reports')} className="text-xs text-blue-400 hover:text-blue-300">View all</button>
           </div>
           <div className="space-y-2">
-            {recentSales.slice(0, 4).map((sale, i) => (
+            {(transactions.length > 0 ? transactions : []).slice(0, 4).map((sale, i) => (
               <div key={i} className="flex items-center justify-between py-2.5 border-b last:border-0"
                 style={{ borderColor: 'var(--border-color)' }}>
                 <div>

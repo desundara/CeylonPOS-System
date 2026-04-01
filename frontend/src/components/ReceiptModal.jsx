@@ -25,7 +25,7 @@ const PRINT_STYLES = `
     const {
         invoiceId, customerName, payment, discount, discountAmt,
         redeemPoints, pointsDiscount, tax, grandTotal, pointsEarned,
-        cashierName,
+        cashierName, storeName, receiptHeader, receiptFooter, taxRatePercent,
     } = saleData;
 
     const handlePrint = () => {
@@ -41,8 +41,8 @@ const PRINT_STYLES = `
     const handleDownload = () => {
         const lines = [
         '================================',
-        '        CEYLON POS',
-        '  Software Solutions (Pvt) Ltd',
+        `        ${(storeName || 'CEYLON POS').substring(0, 24)}`,
+        `  ${(receiptHeader || 'Software Solutions (Pvt) Ltd').substring(0, 28)}`,
         '================================',
         `Invoice : ${invoiceId}`,
         `Date    : ${new Date().toLocaleString('en-LK')}`,
@@ -57,14 +57,14 @@ const PRINT_STYLES = `
         `Subtotal        Rs. ${cart.reduce((s,i) => s + i.price * i.qty, 0).toLocaleString()}`,
         discountAmt > 0 ? `Discount(${discount}%) -Rs. ${discountAmt.toLocaleString()}` : '',
         pointsDiscount > 0 ? `Points Redeem  -Rs. ${pointsDiscount.toLocaleString()}` : '',
-        `Tax (8%)         Rs. ${tax.toLocaleString()}`,
+        `Tax (${taxRatePercent || 0}%)      Rs. ${tax.toLocaleString()}`,
         '================================',
         `TOTAL           Rs. ${grandTotal.toLocaleString()}`,
         `Payment         ${payment}`,
         '================================',
         pointsEarned > 0 ? `Points Earned: +${pointsEarned} pts` : '',
         '',
-        '  Thank you for shopping with us!',
+        `  ${(receiptFooter || 'Thank you for shopping with us!').substring(0, 30)}`,
         '================================',
         ].filter(Boolean).join('\n');
 
@@ -99,10 +99,10 @@ const PRINT_STYLES = `
             <div className="mb-4 text-center">
                 <div className="text-lg font-bold tracking-widest"
                 style={{ color: 'var(--text-primary)', fontFamily: '"Bebas Neue", cursive' }}>
-                CEYLON <span style={{ color: '#42A5F5' }}>POS</span>
+                {(storeName || 'CEYLON')} <span style={{ color: '#42A5F5' }}>POS</span>
                 </div>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                Software Solutions (Pvt) Ltd
+                {receiptHeader || 'Software Solutions (Pvt) Ltd'}
                 </p>
                 <div className="mt-3 border-t border-dashed" style={{ borderColor: 'var(--border-color)' }} />
             </div>
@@ -162,7 +162,7 @@ const PRINT_STYLES = `
                 </div>
                 )}
                 <div className="flex justify-between" style={{ color: 'var(--text-muted)' }}>
-                <span>Tax (8%)</span>
+                <span>Tax ({taxRatePercent || 0}%)</span>
                 <span className="font-mono">Rs. {tax.toLocaleString()}</span>
                 </div>
                 <div className="border-t border-dashed pt-1.5 flex justify-between font-bold text-sm"
@@ -184,7 +184,7 @@ const PRINT_STYLES = `
             {/* Footer */}
             <div className="pt-3 text-center border-t border-dashed" style={{ borderColor: 'var(--border-color)' }}>
                 <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
-                Thank you for shopping with us!
+                {receiptFooter || 'Thank you for shopping with us!'}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Powered by Ceylon POS</p>
             </div>

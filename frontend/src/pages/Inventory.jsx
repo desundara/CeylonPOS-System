@@ -1,47 +1,149 @@
 import React, { useState } from 'react';
-import { Search, Plus, Edit2, AlertTriangle, Package, X, Check } from 'lucide-react';
+import { Search, Plus, Edit2, AlertTriangle, Package, X, Check, QrCode } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { categories } from '../data/mockData';
+import { productService } from '../api/productService';
+import QRScanner from '../components/QRScanner';
 
 export default function Inventory() {
-  const { products, setProducts, showNotification } = useApp();
+  const { products, showNotification, refreshData, suppliers, categories } = useApp();
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('All');
   const [showModal, setShowModal] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
-  const [form, setForm] = useState({ name: '', sku: '', category: 'Grains', price: '', stock: '', minStock: '', unit: '', supplier: '' });
+  const [form, setForm] = useState({
+    name: '',
+    sku: '',
+    barcode: '',
+    category: 'Grains',
+    price: '',
+    stock: '',
+    minStock: '',
+    unit: '',
+    supplier: '',
+  });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [removeImage, setRemoveImage] = useState(false);
 
   const filtered = products.filter(p => {
+    const query = search.trim().toLowerCase();
     const matchCat = filterCat === 'All' || p.category === filterCat;
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
+    const matchSearch =
+      !query ||
+      p.name.toLowerCase().includes(query) ||
+      (p.sku || '').toLowerCase().includes(query) ||
+      (p.barcode || '').toLowerCase().includes(query) ||
+      (p.supplier || '').toLowerCase().includes(query);
     return matchCat && matchSearch;
   });
 
   const openAdd = () => {
     setEditProduct(null);
-    setForm({ name: '', sku: '', category: 'Grains', price: '', stock: '', minStock: '', unit: '', supplier: '' });
+    setForm({
+      name: '',
+      sku: '',
+      barcode: '',
+      category: 'Grains',
+      price: '',
+      stock: '',
+      minStock: '',
+      unit: '',
+      supplier: '',
+    });
+    setImageFile(null);
+    setImagePreview('');
+    setRemoveImage(false);
     setShowModal(true);
   };
 
   const openEdit = (p) => {
     setEditProduct(p);
-    setForm({ name: p.name, sku: p.sku, category: p.category, price: p.price, stock: p.stock, minStock: p.minStock, unit: p.unit, supplier: p.supplier });
+    setForm({
+      name: p.name,
+      sku: p.sku,
+      barcode: p.barcode || '',
+      category: p.category,
+      price: p.price,
+      stock: p.stock,
+      minStock: p.minStock,
+      unit: p.unit,
+      supplier: p.supplier,
+    });
+    setImageFile(null);
+    setImagePreview(p.image || '');
+    setRemoveImage(false);
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    if (!form.name || !form.sku || !form.price) { showNotification('Please fill required fields', 'error'); return; }
-    if (editProduct) {
-      setProducts(prev => prev.map(p => p.id === editProduct.id
-        ? { ...p, ...form, price: +form.price, stock: +form.stock, minStock: +form.minStock }
-        : p));
-      showNotification('Product updated successfully!');
-    } else {
-      const newP = { id: Date.now(), ...form, price: +form.price, stock: +form.stock, minStock: +form.minStock, barcode: `490${Date.now()}` };
-      setProducts(prev => [...prev, newP]);
-      showNotification('Product added successfully!');
+  const handleImageChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showNotification('Please select a valid image file', 'error');
+      return;
     }
-    setShowModal(false);
+
+    setImageFile(file);
+    setRemoveImage(false);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleScanCode = (code) => {
+    setShowScanner(false);
+    setShowModal(true);
+    setForm(f => ({
+      ...f,
+      barcode: code,
+      sku: f.sku || code,
+    }));
+    showNotification(`Scanned code added: ${code}`);
+  };
+
+  const handleSave = async () => {
+    if (!form.name || !form.sku || !form.price) {
+      showNotification('Please fill required fields', 'error');
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append('name', form.name);
+    payload.append('sku', form.sku);
+    payload.append('barcode', form.barcode || '');
+    payload.append('category', form.category);
+    payload.append('price', parseFloat(form.price));
+    payload.append('stock', parseInt(form.stock) || 0);
+    payload.append('min_stock', parseInt(form.minStock) || 0);
+    payload.append('unit', form.unit || '');
+    payload.append('supplier_name', form.supplier || '');
+    if (imageFile) {
+      payload.append('image_file', imageFile);
+    } else if (removeImage) {
+      payload.append('remove_image', 'true');
+    }
+
+    try {
+      if (editProduct) {
+        await productService.update(editProduct.id, payload);
+        showNotification('Product updated successfully!');
+      } else {
+        await productService.create(payload);
+        showNotification('Product added successfully!');
+      }
+      await refreshData();
+      setShowModal(false);
+      setImageFile(null);
+      setImagePreview('');
+      setRemoveImage(false);
+    } catch (error) {
+      showNotification('Failed to save product: ' + error.message, 'error');
+    }
   };
 
   const lowCount = products.filter(p => p.stock <= p.minStock).length;
@@ -55,11 +157,15 @@ export default function Inventory() {
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..." className="input-field pl-9" />
           </div>
           <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className="w-auto input-field">
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            <option value="All">All Categories</option>
+            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
         </div>
         <button onClick={openAdd} className="flex-shrink-0 btn-primary">
           <Plus size={15} /> Add Product
+        </button>
+        <button onClick={() => setShowScanner(true)} className="flex-shrink-0 btn-ghost">
+          <QrCode size={15} /> Scan Code
         </button>
       </div>
 
@@ -67,7 +173,7 @@ export default function Inventory() {
         {[
           { label: 'Total Products', value: products.length, color: '#42A5F5' },
           { label: 'Low Stock', value: lowCount, color: '#FBBF24' },
-          { label: 'Categories', value: categories.length - 1, color: '#A78BFA' },
+          { label: 'Categories', value: categories.length, color: '#A78BFA' },
           { label: 'Total Value', value: `Rs. ${(products.reduce((s, p) => s + p.price * p.stock, 0) / 1000).toFixed(0)}k`, color: '#34D399' },
         ].map((s, i) => (
           <div key={i} className="p-4 glass rounded-xl">
@@ -96,9 +202,13 @@ export default function Inventory() {
                   <tr key={p.id} className="table-row">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg"
+                        <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 overflow-hidden rounded-lg"
                           style={{ background: 'rgba(21,101,192,0.12)' }}>
-                          <Package size={14} className="text-blue-400" />
+                          {p.image ? (
+                            <img src={p.image} alt={p.name} className="object-cover w-full h-full" />
+                          ) : (
+                            <Package size={14} className="text-blue-400" />
+                          )}
                         </div>
                         <div>
                           <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
@@ -156,23 +266,73 @@ export default function Inventory() {
               {[
                 { label: 'Product Name *', key: 'name', type: 'text', full: true },
                 { label: 'SKU *', key: 'sku', type: 'text' },
+                { label: 'Barcode / QR Code', key: 'barcode', type: 'text' },
                 { label: 'Price (Rs.) *', key: 'price', type: 'number' },
                 { label: 'Stock Qty', key: 'stock', type: 'number' },
                 { label: 'Min Stock', key: 'minStock', type: 'number' },
                 { label: 'Unit', key: 'unit', type: 'text' },
-                { label: 'Supplier', key: 'supplier', type: 'text', full: true },
               ].map(({ label, key, type, full }) => (
                 <div key={key} className={full ? 'sm:col-span-2' : ''}>
                   <label className="text-xs mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{label}</label>
-                  <input type={type} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    className="input-field" placeholder={label} />
+                  <input
+                    type={type}
+                    value={form[key]}
+                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                    className="input-field"
+                    placeholder={label}
+                  />
                 </div>
               ))}
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-1">
                 <label className="text-xs mb-1.5 block" style={{ color: 'var(--text-muted)' }}>Category</label>
                 <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="input-field">
-                  {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="">Select a Category</option>
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
+              </div>
+              <div className="sm:col-span-1">
+                <label className="text-xs mb-1.5 block" style={{ color: 'var(--text-muted)' }}>Supplier</label>
+                <select value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="input-field">
+                  <option value="">No Supplier Selected</option>
+                  {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs mb-1.5 block" style={{ color: 'var(--text-muted)' }}>Product Image</label>
+                <div className="flex gap-2">
+                  <input type="file" accept="image/*" onChange={handleImageChange} className="flex-1 input-field" />
+                  <button type="button" onClick={() => setShowScanner(true)} className="btn-ghost">
+                    <QrCode size={15} /> Scan
+                  </button>
+                </div>
+                <div className="flex items-center gap-4 mt-3">
+                  <div className="flex items-center justify-center w-24 h-24 overflow-hidden rounded-xl"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)' }}>
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="Preview" className="object-cover w-full h-full" />
+                    ) : (
+                      <Package size={24} className="text-blue-400" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Upload a product image and scan the product code to save barcode details faster.
+                    </p>
+                    {imagePreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImagePreview('');
+                          setRemoveImage(true);
+                        }}
+                        className="justify-center btn-ghost"
+                      >
+                        Remove Image
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
@@ -185,6 +345,10 @@ export default function Inventory() {
             </div>
           </div>
         </div>
+      )}
+
+      {showScanner && (
+        <QRScanner onScan={handleScanCode} onClose={() => setShowScanner(false)} />
       )}
     </div>
   );

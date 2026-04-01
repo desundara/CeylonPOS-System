@@ -1,16 +1,16 @@
 export const products = [
-  { id: 1, name: 'Basmati Rice 5kg', sku: 'RIC001', category: 'Grains', price: 1850, stock: 142, minStock: 20, unit: 'bag', barcode: '4901234567890', supplier: 'Lanka Agro Pvt Ltd' },
-  { id: 2, name: 'Coconut Oil 1L', sku: 'OIL002', category: 'Cooking', price: 580, stock: 8, minStock: 15, unit: 'bottle', barcode: '4901234567891', supplier: 'Pure Ceylon Foods' },
-  { id: 3, name: 'Dhal (Red Lentils) 1kg', sku: 'DAL003', category: 'Grains', price: 320, stock: 95, minStock: 25, unit: 'pack', barcode: '4901234567892', supplier: 'Lanka Agro Pvt Ltd' },
-  { id: 4, name: 'Sugar 1kg', sku: 'SUG004', category: 'Pantry', price: 180, stock: 3, minStock: 30, unit: 'pack', barcode: '4901234567893', supplier: 'Pelwatte Sugar' },
-  { id: 5, name: 'Milk Powder 400g', sku: 'MLK005', category: 'Dairy', price: 650, stock: 67, minStock: 10, unit: 'tin', barcode: '4901234567894', supplier: 'Anchor Lanka' },
-  { id: 6, name: 'Milo 500g', sku: 'MIL006', category: 'Beverages', price: 870, stock: 43, minStock: 15, unit: 'tin', barcode: '4901234567895', supplier: 'Nestle Lanka' },
-  { id: 7, name: 'Bread (White)', sku: 'BRD007', category: 'Bakery', price: 95, stock: 30, minStock: 10, unit: 'loaf', barcode: '4901234567896', supplier: 'Maliban Biscuits' },
-  { id: 8, name: 'Eggs (10 pack)', sku: 'EGG008', category: 'Dairy', price: 420, stock: 22, minStock: 8, unit: 'pack', barcode: '4901234567897', supplier: 'Sathosa Lanka' },
-  { id: 9, name: 'Keells Sausages', sku: 'SAU009', category: 'Meat', price: 560, stock: 18, minStock: 5, unit: 'pack', barcode: '4901234567898', supplier: 'Keells Food Products' },
-  { id: 10, name: 'Astra Margarine 250g', sku: 'MAR010', category: 'Dairy', price: 240, stock: 51, minStock: 10, unit: 'tub', barcode: '4901234567899', supplier: 'Unilever Lanka' },
-  { id: 11, name: 'Noodles Kottu 100g', sku: 'NOO011', category: 'Instant', price: 65, stock: 200, minStock: 40, unit: 'pack', barcode: '4901234567900', supplier: 'Prima Ceylon' },
-  { id: 12, name: 'Ceylon Tea 200g', sku: 'TEA012', category: 'Beverages', price: 380, stock: 88, minStock: 20, unit: 'pack', barcode: '4901234567901', supplier: 'Dilmah Tea' },
+  { id: 1, name: 'Basmati Rice 5kg', sku: 'RIC001', category: 'Grains', price: 1850, stock: 142, min_stock: 20, unit: 'bag', barcode: '4901234567890', supplier_name: 'Lanka Agro Pvt Ltd' },
+  { id: 2, name: 'Coconut Oil 1L', sku: 'OIL002', category: 'Cooking', price: 580, stock: 8, min_stock: 15, unit: 'bottle', barcode: '4901234567891', supplier_name: 'Pure Ceylon Foods' },
+  { id: 3, name: 'Dhal (Red Lentils) 1kg', sku: 'DAL003', category: 'Grains', price: 320, stock: 95, min_stock: 25, unit: 'pack', barcode: '4901234567892', supplier_name: 'Lanka Agro Pvt Ltd' },
+  { id: 4, name: 'Sugar 1kg', sku: 'SUG004', category: 'Pantry', price: 180, stock: 3, min_stock: 30, unit: 'pack', barcode: '4901234567893', supplier_name: 'Pelwatte Sugar' },
+  { id: 5, name: 'Milk Powder 400g', sku: 'MLK005', category: 'Dairy', price: 650, stock: 67, min_stock: 10, unit: 'tin', barcode: '4901234567894', supplier_name: 'Anchor Lanka' },
+  { id: 6, name: 'Milo 500g', sku: 'MIL006', category: 'Beverages', price: 870, stock: 43, min_stock: 15, unit: 'tin', barcode: '4901234567895', supplier_name: 'Nestle Lanka' },
+  { id: 7, name: 'Bread (White)', sku: 'BRD007', category: 'Bakery', price: 95, stock: 30, min_stock: 10, unit: 'loaf', barcode: '4901234567896', supplier_name: 'Maliban Biscuits' },
+  { id: 8, name: 'Eggs (10 pack)', sku: 'EGG008', category: 'Dairy', price: 420, stock: 22, min_stock: 8, unit: 'pack', barcode: '4901234567897', supplier_name: 'Sathosa Lanka' },
+  { id: 9, name: 'Keells Sausages', sku: 'SAU009', category: 'Meat', price: 560, stock: 18, min_stock: 5, unit: 'pack', barcode: '4901234567898', supplier_name: 'Keells Food Products' },
+  { id: 10, name: 'Astra Margarine 250g', sku: 'MAR010', category: 'Dairy', price: 240, stock: 51, min_stock: 10, unit: 'tub', barcode: '4901234567899', supplier_name: 'Unilever Lanka' },
+  { id: 11, name: 'Noodles Kottu 100g', sku: 'NOO011', category: 'Instant', price: 65, stock: 200, min_stock: 40, unit: 'pack', barcode: '4901234567900', supplier_name: 'Prima Ceylon' },
+  { id: 12, name: 'Ceylon Tea 200g', sku: 'TEA012', category: 'Beverages', price: 380, stock: 88, min_stock: 20, unit: 'pack', barcode: '4901234567901', supplier_name: 'Dilmah Tea' },
 ];
 
 export const categories = ['All', 'Grains', 'Cooking', 'Pantry', 'Dairy', 'Beverages', 'Bakery', 'Meat', 'Instant'];

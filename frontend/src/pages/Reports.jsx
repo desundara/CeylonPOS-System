@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, Download, Calendar } from 'lucide-react';
-import { salesData, monthlyData, topProducts, recentSales } from '../data/mockData';
 import { useApp } from '../context/AppContext';
+import { saleService } from '../api/saleService';
 
 const COLORS = ['#1565C0', '#1E88E5', '#42A5F5', '#64B5F6', '#90CAF9'];
 
@@ -20,21 +20,58 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-const pieData = [
-  { name: 'Cash', value: 58 },
-  { name: 'Card', value: 27 },
-  { name: 'Digital', value: 15 },
-];
-
 export default function Reports() {
-  const { transactions } = useApp();
+  const { transactions, dailyMetrics, monthlyMetrics, topProducts, showNotification } = useApp();
   const [period, setPeriod] = useState('week');
+  const [pieData, setPieData] = useState([
+    { name: 'Cash', value: 0 },
+    { name: 'Card', value: 0 },
+    { name: 'Digital', value: 0 },
+  ]);
+
+  const totalRevenue = transactions.reduce((s, t) => s + parseFloat(t.total), 0);
+  const avgOrderValue = transactions.length > 0 ? totalRevenue / transactions.length : 0;
+
+  useEffect(() => {
+    const loadPaymentSummary = async () => {
+      try {
+        const summary = await saleService.getPaymentSummary();
+        setPieData(summary);
+      } catch (error) {
+        showNotification('Failed to load payment summary: ' + error.message, 'error');
+      }
+    };
+
+    loadPaymentSummary();
+  }, [showNotification]);
+
+  const handleExport = () => {
+    const lines = [
+      `Period,${period}`,
+      `Total Revenue,${totalRevenue.toFixed(2)}`,
+      `Orders,${transactions.length}`,
+      `Average Order Value,${avgOrderValue.toFixed(2)}`,
+      '',
+      'Invoice,Customer,Items,Payment,Time,Amount',
+      ...transactions.map((tx) => (
+        [tx.id, tx.customer, tx.items, tx.payment, tx.time, tx.total].join(',')
+      )),
+    ].join('\n');
+
+    const blob = new Blob([lines], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sales-report-${period}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const summaryStats = [
-    { label: 'Total Revenue', value: 'Rs. 1,240,000', change: '+8.2%', up: true },
-    { label: 'Net Profit', value: 'Rs. 374,800', change: '+5.1%', up: true },
-    { label: 'Orders', value: '1,284', change: '+12.4%', up: true },
-    { label: 'Avg Order Value', value: 'Rs. 966', change: '-2.1%', up: false },
+    { label: 'Total Revenue', value: `Rs. ${totalRevenue.toLocaleString()}`, change: 'Live data', up: true },
+    { label: 'Net Profit', value: `Rs. ${(totalRevenue * 0.25).toLocaleString()}`, change: 'Est. 25%', up: true },
+    { label: 'Orders', value: transactions.length.toLocaleString(), change: 'Total', up: true },
+    { label: 'Avg Order Value', value: `Rs. ${avgOrderValue.toFixed(0)}`, change: 'Per order', up: true },
   ];
 
   return (
@@ -51,8 +88,8 @@ export default function Reports() {
             </button>
           ))}
         </div>
-        <button className="flex-shrink-0 text-sm btn-ghost">
-          <Download size={14} /> Export PDF
+        <button onClick={handleExport} className="flex-shrink-0 text-sm btn-ghost">
+          <Download size={14} /> Export CSV
         </button>
       </div>
 
@@ -76,7 +113,7 @@ export default function Reports() {
             <TrendingUp size={16} className="text-blue-400" />
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={salesData}>
+            <AreaChart data={dailyMetrics}>
               <defs>
                 <linearGradient id="rg2" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#1565C0" stopOpacity={0.4} />
@@ -134,12 +171,12 @@ export default function Reports() {
           <h3 className="mb-1 font-semibold" style={{ color: 'var(--text-primary)' }}>Monthly Revenue</h3>
           <p className="mb-4 text-xs" style={{ color: 'var(--text-muted)' }}>Past 7 months</p>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={monthlyData} barSize={22}>
+            <BarChart data={monthlyMetrics} barSize={22}>
               <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
-                {monthlyData.map((_, i) => <Cell key={i} fill={i === monthlyData.length - 1 ? '#42A5F5' : '#1565C0'} />)}
+                {monthlyMetrics.map((_, i) => <Cell key={i} fill={i === monthlyMetrics.length - 1 ? '#42A5F5' : '#1565C0'} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -185,7 +222,7 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody>
-              {(transactions || recentSales).slice(0, 8).map((s, i) => (
+              {(transactions || []).slice(0, 8).map((s, i) => (
                 <tr key={i} className="table-row">
                   <td className="px-4 py-3 font-mono text-xs text-blue-400">{s.id}</td>
                   <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-primary)' }}>{s.customer}</td>
