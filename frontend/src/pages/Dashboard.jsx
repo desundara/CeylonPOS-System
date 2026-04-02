@@ -82,7 +82,7 @@ export default function Dashboard() {
               </defs>
               <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={CustomTooltip} />
               <Area type="monotone" dataKey="revenue" stroke="#1565C0" strokeWidth={2} fill="url(#revGrad)" />
               <Area type="monotone" dataKey="profit"  stroke="#42A5F5" strokeWidth={2} fill="url(#profGrad)" />
             </AreaChart>
@@ -98,7 +98,7 @@ export default function Dashboard() {
             <BarChart data={monthlyMetrics} barSize={18}>
               <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis hide />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={CustomTooltip} />
               <Bar dataKey="revenue" fill="#1565C0" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
