@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { products as defaultProducts, customers as defaultCustomers, suppliers as defaultSuppliers, recentSales, categories as defaultCategories, salesData as defaultSalesData, monthlyData as defaultMonthlyData, topProducts as defaultTopProducts } from '../data/mockData';
 import { productService } from '../api/productService';
 import { customerService } from '../api/customerService';
@@ -199,31 +199,44 @@ export function AppProvider({ children }) {
     refreshData();
   }, []);
 
-  const removeToast = (id) => {
+  const removeToast = useCallback((id) => {
     setNotification((prev) => prev.filter((item) => item.id !== id));
     const timer = notificationTimersRef.current.get(id);
     if (timer) {
       clearTimeout(timer);
       notificationTimersRef.current.delete(id);
     }
-  };
+  }, []);
 
-  const markNotificationsRead = (ids = null) => {
+  const markNotificationsRead = useCallback((ids = null) => {
     setNotifications((prev) => prev.map((item) => (
       !ids || ids.includes(item.id) ? { ...item, read: true } : item
     )));
-  };
+  }, []);
 
-  const pushSystemNotification = (entry) => {
+  const pushSystemNotification = useCallback((entry) => {
     setNotifications((prev) => {
       const existing = prev.find((item) => item.key && item.key === entry.key);
       if (existing) {
+        const nextCreatedAt = entry.createdAt || existing.createdAt;
+        const hasChanges = (
+          existing.type !== (entry.type || 'info') ||
+          existing.title !== entry.title ||
+          existing.msg !== entry.msg ||
+          existing.read !== false ||
+          existing.createdAt !== nextCreatedAt
+        );
+
+        if (!hasChanges) {
+          return prev;
+        }
+
         return prev.map((item) => item.id === existing.id ? {
           ...item,
           ...entry,
           id: existing.id,
           read: false,
-          createdAt: entry.createdAt || new Date().toISOString(),
+          createdAt: nextCreatedAt,
         } : item);
       }
 
@@ -239,9 +252,9 @@ export function AppProvider({ children }) {
         key: entry.key,
       }, ...prev].slice(0, 30);
     });
-  };
+  }, []);
 
-  const showNotification = (msg, type = 'success', options = {}) => {
+  const showNotification = useCallback((msg, type = 'success', options = {}) => {
     const id = ++notificationIdRef.current;
     const entry = {
       id,
@@ -299,7 +312,7 @@ export function AppProvider({ children }) {
     const timer = setTimeout(() => removeToast(id), timeoutMs);
     notificationTimersRef.current.set(id, timer);
     return id;
-  };
+  }, [appSettings.notify_sound, removeToast]);
 
   const addToCart = (product) => {
     setCart(prev => {
@@ -317,8 +330,29 @@ export function AppProvider({ children }) {
 
   const cartTotal = cart.reduce((s, i) => s + parseFloat(i.price) * i.qty, 0);
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
-  const lowStockProducts = products.filter(p => p.stock <= p.minStock);
-  const unreadNotifications = notifications.filter((item) => !item.read);
+  const lowStockProducts = useMemo(
+    () => products.filter((p) => p.stock <= p.minStock),
+    [products]
+  );
+  const unreadNotifications = useMemo(
+    () => notifications.filter((item) => !item.read),
+    [notifications]
+  );
+  const lowStockSummary = useMemo(() => {
+    const count = lowStockProducts.length;
+    const topNames = lowStockProducts.slice(0, 3).map((product) => product.name).join(', ');
+    return { count, topNames };
+  }, [lowStockProducts]);
+  const todaySummary = useMemo(() => {
+    const today = new Date().toLocaleDateString('en-LK');
+    const todaySales = transactions.filter((item) => item.date === today);
+    const totalRevenue = todaySales.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+
+    return {
+      count: todaySales.length,
+      totalRevenue,
+    };
+  }, [transactions]);
 
   const POINTS_PER_RUPEE = 0.01;
   const POINTS_VALUE = 0.5;
@@ -337,34 +371,28 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!appSettings.notify_low_stock) return;
     if (loading) return;
-    if (lowStockProducts.length === 0) return;
+    if (lowStockSummary.count === 0) return;
 
-    const topProducts = lowStockProducts.slice(0, 3).map((product) => product.name).join(', ');
     pushSystemNotification({
       key: 'low-stock-alert',
       type: 'warning',
       title: 'Low stock alert',
-      msg: `${lowStockProducts.length} product${lowStockProducts.length > 1 ? 's are' : ' is'} below minimum stock${topProducts ? `: ${topProducts}` : ''}`,
+      msg: `${lowStockSummary.count} product${lowStockSummary.count > 1 ? 's are' : ' is'} below minimum stock${lowStockSummary.topNames ? `: ${lowStockSummary.topNames}` : ''}`,
     });
-  }, [appSettings.notify_low_stock, loading, lowStockProducts]);
+  }, [appSettings.notify_low_stock, loading, lowStockSummary, pushSystemNotification]);
 
   useEffect(() => {
     if (!appSettings.notify_daily_report) return;
     if (loading) return;
-    if (!transactions.length) return;
+    if (!todaySummary.count) return;
 
-    const today = new Date().toLocaleDateString('en-LK');
-    const todaySales = transactions.filter((item) => item.date === today);
-    if (!todaySales.length) return;
-
-    const totalRevenue = todaySales.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
     pushSystemNotification({
       key: 'daily-report-summary',
       type: 'info',
       title: 'Today summary',
-      msg: `${todaySales.length} sales today totaling Rs. ${totalRevenue.toLocaleString()}`,
+      msg: `${todaySummary.count} sales today totaling Rs. ${todaySummary.totalRevenue.toLocaleString()}`,
     });
-  }, [appSettings.notify_daily_report, loading, transactions]);
+  }, [appSettings.notify_daily_report, loading, todaySummary, pushSystemNotification]);
 
   const loginCashier = (cashier) => {
     setCashierSession({ ...cashier, loginTime: new Date().toLocaleTimeString() });

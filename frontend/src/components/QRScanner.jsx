@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { X, Camera, Zap, AlertCircle, CheckCircle2 } from 'lucide-react';
+import jsQR from 'jsqr';
 
 export default function QRScanner({ onScan, onClose }) {
   const videoRef = useRef(null);
@@ -87,14 +88,12 @@ export default function QRScanner({ onScan, onClose }) {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     try {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      if (window.jsQR) {
-        const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert',
-        });
-        if (code && code.data && code.data !== lastScanned) {
-          handleFound(code.data);
-          return;
-        }
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      });
+      if (code && code.data && code.data !== lastScanned) {
+        handleFound(code.data);
+        return;
       }
     } catch (e) {}
     animRef.current = requestAnimationFrame(scanFrame);

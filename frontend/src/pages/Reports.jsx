@@ -126,7 +126,7 @@ export default function Reports() {
               </defs>
               <XAxis dataKey="day" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={CustomTooltip} />
               <Area type="monotone" dataKey="revenue" stroke="#1565C0" strokeWidth={2} fill="url(#rg2)" />
               <Area type="monotone" dataKey="profit" stroke="#34D399" strokeWidth={2} fill="url(#pg2)" />
             </AreaChart>
@@ -174,7 +174,7 @@ export default function Reports() {
             <BarChart data={monthlyMetrics} barSize={22}>
               <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={CustomTooltip} />
               <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
                 {monthlyMetrics.map((_, i) => <Cell key={i} fill={i === monthlyMetrics.length - 1 ? '#42A5F5' : '#1565C0'} />)}
               </Bar>
